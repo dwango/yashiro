@@ -1,0 +1,22 @@
+---
+- name: bug
+  description: Categorizes issue or PR as related to a bug.
+  color: d73a4a
+- name: feature
+  description: Categorizes issue or PR as related to a new feature.
+  color: a2eeef
+- name: breaking
+  description: Indicates a PR that contains breaking changes.
+  color: f5e642
+- name: deprecation
+  description: Categorizes issue or PR as related to a feature marked for deprecation.
+  color: a50bd9
+- name: refactoring
+  description: Categorizes issue or PR as related to a code refactoring.
+  color: 0366d6
+- name: dependency
+  description: Issues or PR related to dependency changes.
+  color: 0366d6
+- name: ignore
+  description: Indicates a PR that excludes from release notes.
+  color: 8f8f8d

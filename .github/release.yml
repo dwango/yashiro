@@ -1,0 +1,24 @@
+---
+changelog:
+  exclude:
+    labels:
+      - "ignore"
+  categories:
+    - title: "💥 Breaking Changes"
+      labels:
+        - "breaking"
+    - title: "✨ New Feature"
+      labels:
+        - "feature"
+    - title: "🐛 Bug Fix"
+      labels:
+        - "bug"
+    - title: "🗑️ Deprecation"
+      labels:
+        - "deprecation"
+    - title: "♻️ Code Refactoring"
+      labels:
+        - "refactoring"
+    - title: "⬆️ Dependency Updates"
+      labels:
+        - "dependency"
