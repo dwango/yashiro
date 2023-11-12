@@ -1,0 +1,9 @@
+---
+aws:
+  parameter_store:
+    - name: /yashiro/example
+      ref: example
+      is_json: true
+    - name: /yashiro/example/secure
+      ref: exampleSecure
+      decryption: true
