@@ -19,9 +19,20 @@ go get github.com/dwango/yashiro
 
 ## CLI Tool
 
-### Install
+### Installation
+
+#### From release page
 
 Download binary from [release page](https://github.com/dwango/yashiro/releases).
+
+#### Homebrew Users
+
+Download and install by homebrew.
+
+```sh
+brew tap dwango/yashiro
+brew install ysr
+```
 
 ### Example
 

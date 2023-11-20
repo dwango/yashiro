@@ -34,6 +34,21 @@ archives:
       - goos: windows
         format: zip
 
+brews:
+  - homepage: https://github.com/dwango/yashiro
+    description: A tool to manage template files with external stores.
+    license: "Apache-2.0"
+    skip_upload: auto
+    extra_install: |
+      generate_completions_from_executable(bin/"{{ .ProjectName }}", "completion", base_name: "{{ .ProjectName }}")
+    test: |
+      version_output = shell_output("#{bin}/{{ .ProjectName }} version")
+      assert_match "{{ .Version }}", version_output
+    repository:
+      git:
+        url: "git@github.com:dwango/homebrew-yashiro.git"
+        private_key: "{{ .Env.DEPLOY_PRIVATE_KEY }}"
+
 checksum:
   name_template: "checksums.txt"
 
