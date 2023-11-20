@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/aws/aws-sdk-go-v2 v1.23.0
 	github.com/aws/aws-sdk-go-v2/config v1.25.3
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.23.0
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.23.2
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.43.0
 	github.com/spf13/cobra v1.8.0
 	sigs.k8s.io/yaml v1.4.0
