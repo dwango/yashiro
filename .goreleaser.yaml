@@ -47,7 +47,7 @@ brews:
     repository:
       git:
         url: "git@github.com:dwango/homebrew-yashiro.git"
-        private_key: '{{ .Env.DEPLOY_PRIVATE_KEY }}'
+        private_key: "{{ .Env.DEPLOY_PRIVATE_KEY }}"
 
 checksum:
   name_template: "checksums.txt"
