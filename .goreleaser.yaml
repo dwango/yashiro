@@ -45,6 +45,9 @@ brews:
       version_output = shell_output("#{bin}/{{ .ProjectName }} version")
       assert_match "{{ .Version }}", version_output
     repository:
+      owner: dwango
+      name: homebrew-yashiro
+      branch: main
       git:
         url: "git@github.com:dwango/homebrew-yashiro.git"
         private_key: "{{ .Env.DEPLOY_PRIVATE_KEY }}"
