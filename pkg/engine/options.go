@@ -16,7 +16,7 @@
 
 package engine
 
-// Option is configurable Engine behaver.
+// Option is configurable Engine behavior.
 type Option func(*opts)
 
 // IgnoreEmpty ignores empty value from external store.
