@@ -29,11 +29,12 @@ import (
 var (
 	ErrNotfoundValueConfig = errors.New("not found value config")
 	ErrValueIsEmpty        = errors.New("value is empty")
+	ErrInvalidJSON         = errors.New("invalid json string")
 )
 
 // Client is the external stores client.
 type Client interface {
-	GetValues(ctx context.Context, ignoreEmpty bool) (Values, error)
+	GetValues(ctx context.Context, ignoreNotFound bool) (Values, error)
 }
 
 // New returns a new Client.
@@ -63,7 +64,7 @@ func (v Values) SetValue(cfg config.Value, value *string) error {
 	if cfg.GetIsJSON() {
 		val = make(map[string]any)
 		if err := json.Unmarshal([]byte(*value), &val); err != nil {
-			return fmt.Errorf("%w: invalid json string", err)
+			return fmt.Errorf("%w: %w", ErrInvalidJSON, err)
 		}
 	} else {
 		val = *value

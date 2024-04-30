@@ -38,6 +38,7 @@ const example = `  # specify single file.
 
 func newTemplateCommand() *cobra.Command {
 	var configFile string
+	var ignoreNotFound bool
 
 	cmd := cobra.Command{
 		Use:     "template <file>",
@@ -54,7 +55,7 @@ func newTemplateCommand() *cobra.Command {
 				return err
 			}
 
-			eng, err := engine.New(cfg)
+			eng, err := engine.New(cfg, engine.IgnoreNotFound(ignoreNotFound))
 			if err != nil {
 				return err
 			}
@@ -70,6 +71,7 @@ func newTemplateCommand() *cobra.Command {
 
 	f := cmd.Flags()
 	f.StringVarP(&configFile, "config", "c", config.DefaultConfigFilename, "specify config file.")
+	f.BoolVar(&ignoreNotFound, "ignore-not-found", false, "ignore values are not found in the external store.")
 
 	return &cmd
 }
