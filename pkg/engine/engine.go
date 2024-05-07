@@ -56,7 +56,7 @@ func New(cfg *config.Config, option ...Option) (Engine, error) {
 }
 
 func (e engine) Render(ctx context.Context, text string, dest io.Writer) error {
-	values, err := e.client.GetValues(ctx, e.option.IgnoreEmpty)
+	values, err := e.client.GetValues(ctx, e.option.IgnoreNotFound)
 	if err != nil {
 		return err
 	}

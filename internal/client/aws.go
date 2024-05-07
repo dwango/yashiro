@@ -22,7 +22,9 @@ import (
 	"fmt"
 
 	kms "github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	kmsTypes "github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	ssmTypes "github.com/aws/aws-sdk-go-v2/service/ssm/types"
 	"github.com/dwango/yashiro/pkg/config"
 )
 
@@ -46,7 +48,7 @@ func newAwsClient(cfg *config.AwsConfig) (Client, error) {
 	}, nil
 }
 
-func (c awsClient) GetValues(ctx context.Context, ignoreEmpty bool) (Values, error) {
+func (c awsClient) GetValues(ctx context.Context, ignoreNotFound bool) (Values, error) {
 	values := make(Values, len(c.parameterStoreValue)+len(c.secretsManagerValue))
 
 	for _, v := range c.parameterStoreValue {
@@ -56,13 +58,14 @@ func (c awsClient) GetValues(ctx context.Context, ignoreEmpty bool) (Values, err
 		})
 
 		if err != nil {
+			var notFoundErr *ssmTypes.ParameterNotFound
+			if ignoreNotFound && errors.As(err, &notFoundErr) {
+				continue
+			}
 			return nil, err
 		}
 
 		if err := values.SetValue(v, output.Parameter.Value); err != nil {
-			if ignoreEmpty && errors.Is(err, ErrValueIsEmpty) {
-				continue
-			}
 			return nil, err
 		}
 	}
@@ -71,7 +74,12 @@ func (c awsClient) GetValues(ctx context.Context, ignoreEmpty bool) (Values, err
 		output, err := c.kmsClient.GetSecretValue(ctx, &kms.GetSecretValueInput{
 			SecretId: &v.Name,
 		})
+
 		if err != nil {
+			var notFoundErr *kmsTypes.ResourceNotFoundException
+			if ignoreNotFound && errors.As(err, &notFoundErr) {
+				continue
+			}
 			return nil, err
 		}
 

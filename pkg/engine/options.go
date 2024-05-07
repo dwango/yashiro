@@ -19,17 +19,17 @@ package engine
 // Option is configurable Engine behavior.
 type Option func(*opts)
 
-// IgnoreEmpty ignores empty value from external store.
-func IgnoreEmpty() Option {
+// IgnoreNotFound ignores values are not found in the external store.
+func IgnoreNotFound(b bool) Option {
 	return func(o *opts) {
-		o.IgnoreEmpty = true
+		o.IgnoreNotFound = b
 	}
 }
 
 type opts struct {
-	IgnoreEmpty bool
+	IgnoreNotFound bool
 }
 
 var defaultOpts = &opts{
-	IgnoreEmpty: false,
+	IgnoreNotFound: false,
 }
