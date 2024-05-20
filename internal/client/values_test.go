@@ -17,6 +17,7 @@
 package client
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/dwango/yashiro/pkg/config"
@@ -44,7 +45,7 @@ func TestValues_SetValue(t *testing.T) {
 		name    string
 		v       Values
 		args    args
-		wantErr bool
+		wantErr error
 	}{
 		{
 			name: "ok",
@@ -61,7 +62,7 @@ func TestValues_SetValue(t *testing.T) {
 				cfg:   mockConfigValue{isJSON: false},
 				value: nil,
 			},
-			wantErr: true,
+			wantErr: ErrValueIsEmpty,
 		},
 		{
 			name: "error: value is empty",
@@ -70,7 +71,7 @@ func TestValues_SetValue(t *testing.T) {
 				cfg:   mockConfigValue{isJSON: false},
 				value: returnStrPtr(""),
 			},
-			wantErr: true,
+			wantErr: ErrValueIsEmpty,
 		},
 		{
 			name: "error: value is invalid json",
@@ -79,12 +80,12 @@ func TestValues_SetValue(t *testing.T) {
 				cfg:   mockConfigValue{isJSON: true},
 				value: returnStrPtr("INVALID JSON"),
 			},
-			wantErr: true,
+			wantErr: ErrInvalidJSON,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.v.SetValue(tt.args.cfg, tt.args.value); (err != nil) != tt.wantErr {
+			if err := tt.v.SetValue(tt.args.cfg, tt.args.value); err != nil && !errors.Is(err, tt.wantErr) {
 				t.Errorf("Values.SetValue() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
