@@ -28,9 +28,17 @@ import (
 	"github.com/dwango/yashiro/pkg/config"
 )
 
+type ssmClient interface {
+	GetParameter(ctx context.Context, params *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error)
+}
+
+type kmsClient interface {
+	GetSecretValue(ctx context.Context, params *kms.GetSecretValueInput, optFns ...func(*kms.Options)) (*kms.GetSecretValueOutput, error)
+}
+
 type awsClient struct {
-	ssmClient           *ssm.Client
-	kmsClient           *kms.Client
+	ssmClient           ssmClient
+	kmsClient           kmsClient
 	parameterStoreValue []config.AwsParameterStoreValueConfig
 	secretsManagerValue []config.ValueConfig
 }

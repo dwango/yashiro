@@ -18,9 +18,7 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/dwango/yashiro/pkg/config"
 )
@@ -44,33 +42,4 @@ func New(cfg *config.Config) (Client, error) {
 	}
 
 	return nil, ErrNotfoundValueConfig
-}
-
-// Values are stored values from external stores.
-type Values map[string]any
-
-// SetValue sets the getting value from external stores. If value is json string, is set
-// as map[string]any.
-func (v Values) SetValue(cfg config.Value, value *string) error {
-	if value == nil || len(*value) == 0 {
-		return ErrValueIsEmpty
-	}
-
-	if v == nil {
-		v = make(Values)
-	}
-
-	var val any
-	if cfg.GetIsJSON() {
-		val = make(map[string]any)
-		if err := json.Unmarshal([]byte(*value), &val); err != nil {
-			return fmt.Errorf("%w: %w", ErrInvalidJSON, err)
-		}
-	} else {
-		val = *value
-	}
-
-	v[cfg.GetReferenceName()] = val
-
-	return nil
 }
