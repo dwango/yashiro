@@ -28,6 +28,7 @@ $ aws ssm put-parameter --name '/yashiro/example/secure' --value 'password' --ty
 
 ```sh
 $ ysr template -c ./yashiro.yaml example.yaml.tmpl
+# This is a example of yashiro template.
 ---
 apiVersion: v1
 kind: Secret
