@@ -25,6 +25,7 @@ import (
 
 	"github.com/dwango/yashiro/internal/client"
 	"github.com/dwango/yashiro/pkg/config"
+	"github.com/dwango/yashiro/pkg/engine/encoding"
 )
 
 func TestNew(t *testing.T) {
@@ -62,14 +63,21 @@ func (m mockClient) GetValues(ctx context.Context, ignoreNotFound bool) (client.
 
 func Test_engine_Render(t *testing.T) {
 	type fields struct {
-		client   client.Client
-		template *template.Template
-		option   *opts
+		client           client.Client
+		encodeAndDecoder encoding.EncodeAndDecoder
+		template         *template.Template
+		option           *opts
 	}
 	type args struct {
 		ctx  context.Context
 		text string
 	}
+
+	createEncodeAndDecoder := func(docType encoding.TextType) encoding.EncodeAndDecoder {
+		encAndDec, _ := encoding.NewEncodeAndDecoder(docType)
+		return encAndDec
+	}
+
 	tests := []struct {
 		name     string
 		fields   fields
@@ -83,8 +91,9 @@ func Test_engine_Render(t *testing.T) {
 				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
 					return map[string]any{"key": "value"}, nil
 				}),
-				template: template.New("test"),
-				option:   &opts{},
+				encodeAndDecoder: &noOpEncodeAndDecoder{},
+				template:         template.New("test"),
+				option:           &opts{},
 			},
 			args: args{
 				ctx:  context.Background(),
@@ -98,8 +107,9 @@ func Test_engine_Render(t *testing.T) {
 				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
 					return map[string]any{"Values": map[string]any{"key": "value"}}, nil
 				}),
-				template: template.New("test"),
-				option:   &opts{},
+				encodeAndDecoder: &noOpEncodeAndDecoder{},
+				template:         template.New("test"),
+				option:           &opts{},
 			},
 			args: args{
 				ctx:  context.Background(),
@@ -113,8 +123,9 @@ func Test_engine_Render(t *testing.T) {
 				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
 					return map[string]any{"key": "value"}, nil
 				}),
-				template: template.New("test").Funcs(funcMap()),
-				option:   &opts{},
+				encodeAndDecoder: &noOpEncodeAndDecoder{},
+				template:         template.New("test").Funcs(funcMap()),
+				option:           &opts{},
 			},
 			args: args{
 				ctx:  context.Background(),
@@ -123,13 +134,30 @@ func Test_engine_Render(t *testing.T) {
 			wantDest: "VALUE",
 		},
 		{
+			name: "ok: encode and decode as yaml-docs after rendering",
+			fields: fields{
+				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
+					return map[string]any{"key": "value"}, nil
+				}),
+				encodeAndDecoder: createEncodeAndDecoder(encoding.TextTypeYAMLDocs),
+				template:         template.New("test"),
+				option:           &opts{},
+			},
+			args: args{
+				ctx:  context.Background(),
+				text: "---\nkey: {{ .key }}\n---\n# comment\nkey2: value2\n",
+			},
+			wantDest: "---\nkey: value\n---\nkey2: value2\n",
+		},
+		{
 			name: "error: failed to get values",
 			fields: fields{
 				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
 					return nil, client.ErrValueIsEmpty
 				}),
-				template: template.New("test"),
-				option:   &opts{},
+				encodeAndDecoder: &noOpEncodeAndDecoder{},
+				template:         template.New("test"),
+				option:           &opts{},
 			},
 			args: args{
 				ctx:  context.Background(),
@@ -143,8 +171,9 @@ func Test_engine_Render(t *testing.T) {
 				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
 					return map[string]any{"key": "value"}, nil
 				}),
-				template: template.New("test"),
-				option:   &opts{},
+				encodeAndDecoder: &noOpEncodeAndDecoder{},
+				template:         template.New("test"),
+				option:           &opts{},
 			},
 			args: args{
 				ctx:  context.Background(),
@@ -158,8 +187,9 @@ func Test_engine_Render(t *testing.T) {
 				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
 					return map[string]any{"key": "value"}, nil
 				}),
-				template: template.New("test").Option("missingkey=error"),
-				option:   &opts{},
+				encodeAndDecoder: &noOpEncodeAndDecoder{},
+				template:         template.New("test").Option("missingkey=error"),
+				option:           &opts{},
 			},
 			args: args{
 				ctx:  context.Background(),
@@ -167,13 +197,30 @@ func Test_engine_Render(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "error: failed to encode and decode",
+			fields: fields{
+				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
+					return map[string]any{"key": "value"}, nil
+				}),
+				encodeAndDecoder: createEncodeAndDecoder(encoding.TextTypeJSON),
+				template:         template.New("test"),
+				option:           &opts{},
+			},
+			args: args{
+				ctx:  context.Background(),
+				text: "{{ .key }}",
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := engine{
-				client:   tt.fields.client,
-				template: tt.fields.template,
-				option:   tt.fields.option,
+				client:           tt.fields.client,
+				encodeAndDecoder: tt.fields.encodeAndDecoder,
+				template:         tt.fields.template,
+				option:           tt.fields.option,
 			}
 			dest := &bytes.Buffer{}
 			if err := e.Render(tt.args.ctx, tt.args.text, dest); (err != nil) != tt.wantErr {

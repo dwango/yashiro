@@ -16,8 +16,28 @@
 
 package engine
 
+import "github.com/dwango/yashiro/pkg/engine/encoding"
+
 // Option is configurable Engine behavior.
 type Option func(*opts)
+
+type TextTypeOpt = encoding.TextType
+
+const (
+	TextTypePlane     TextTypeOpt = "plane"
+	TextTypeJSON      TextTypeOpt = encoding.TextTypeJSON
+	TextTypeJSONArray TextTypeOpt = encoding.TextTypeJSONArray
+	TextTypeYAML      TextTypeOpt = encoding.TextTypeYAML
+	TextTypeYAMLArray TextTypeOpt = encoding.TextTypeYAMLArray
+	TextTypeYAMLDocs  TextTypeOpt = encoding.TextTypeYAMLDocs
+)
+
+// TextType sets the text type of rendered text.
+func TextType(tto TextTypeOpt) Option {
+	return func(o *opts) {
+		o.TextType = tto
+	}
+}
 
 // IgnoreNotFound ignores values are not found in the external store.
 func IgnoreNotFound(b bool) Option {
@@ -28,8 +48,10 @@ func IgnoreNotFound(b bool) Option {
 
 type opts struct {
 	IgnoreNotFound bool
+	TextType       TextTypeOpt
 }
 
 var defaultOpts = &opts{
 	IgnoreNotFound: false,
+	TextType:       TextTypePlane,
 }

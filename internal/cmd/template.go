@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/dwango/yashiro/pkg/config"
 	"github.com/dwango/yashiro/pkg/engine"
@@ -36,9 +37,19 @@ const example = `  # specify single file.
   ysr template ./example/*.tmpl
 `
 
+var textTypeValues = []string{
+	string(engine.TextTypePlane),
+	string(engine.TextTypeJSON),
+	string(engine.TextTypeJSONArray),
+	string(engine.TextTypeYAML),
+	string(engine.TextTypeYAMLArray),
+	string(engine.TextTypeYAMLDocs),
+}
+
 func newTemplateCommand() *cobra.Command {
 	var configFile string
 	var ignoreNotFound bool
+	var textType string
 
 	cmd := cobra.Command{
 		Use:     "template <file>",
@@ -55,7 +66,9 @@ func newTemplateCommand() *cobra.Command {
 				return err
 			}
 
-			eng, err := engine.New(cfg, engine.IgnoreNotFound(ignoreNotFound))
+			eng, err := engine.New(cfg,
+				engine.IgnoreNotFound(ignoreNotFound), engine.TextType(engine.TextTypeOpt(textType)),
+			)
 			if err != nil {
 				return err
 			}
@@ -71,6 +84,9 @@ func newTemplateCommand() *cobra.Command {
 
 	f := cmd.Flags()
 	f.StringVarP(&configFile, "config", "c", config.DefaultConfigFilename, "specify config file.")
+	f.StringVar(&textType, "text-type", string(engine.TextTypePlane),
+		fmt.Sprintf("specify text type after rendering. available values: %s", strings.Join(textTypeValues, ", ")),
+	)
 	f.BoolVar(&ignoreNotFound, "ignore-not-found", false, "ignore values are not found in the external store.")
 
 	return &cmd

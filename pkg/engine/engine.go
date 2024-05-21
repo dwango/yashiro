@@ -17,22 +17,26 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"text/template"
 
 	"github.com/dwango/yashiro/internal/client"
 	"github.com/dwango/yashiro/pkg/config"
+	"github.com/dwango/yashiro/pkg/engine/encoding"
 )
 
+// Engine is a template engine.
 type Engine interface {
 	Render(ctx context.Context, text string, dest io.Writer) error
 }
 
 type engine struct {
-	client   client.Client
-	template *template.Template
-	option   *opts
+	client           client.Client
+	encodeAndDecoder encoding.EncodeAndDecoder
+	template         *template.Template
+	option           *opts
 }
 
 func New(cfg *config.Config, option ...Option) (Engine, error) {
@@ -46,12 +50,23 @@ func New(cfg *config.Config, option ...Option) (Engine, error) {
 		return nil, err
 	}
 
+	var encAndDec encoding.EncodeAndDecoder
+	if opts.TextType == TextTypePlane {
+		encAndDec = &noOpEncodeAndDecoder{}
+	} else {
+		encAndDec, err = encoding.NewEncodeAndDecoder(opts.TextType)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	tmpl := template.New("yashiro").Option("missingkey=error").Funcs(funcMap())
 
 	return &engine{
-		client:   cli,
-		template: tmpl,
-		option:   opts,
+		client:           cli,
+		encodeAndDecoder: encAndDec,
+		template:         tmpl,
+		option:           opts,
 	}, nil
 }
 
@@ -69,5 +84,26 @@ func (e engine) render(text string, dest io.Writer, data any) error {
 		return err
 	}
 
-	return e.template.Execute(dest, data)
+	tmp := &bytes.Buffer{}
+	if err := e.template.Execute(tmp, data); err != nil {
+		return err
+	}
+
+	b, err := e.encodeAndDecoder.EncodeAndDecode(tmp.Bytes())
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(dest, bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type noOpEncodeAndDecoder struct{}
+
+func (noOpEncodeAndDecoder) EncodeAndDecode(b []byte) ([]byte, error) {
+	return b, nil
 }
