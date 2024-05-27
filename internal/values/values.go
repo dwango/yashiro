@@ -13,13 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package client
+package values
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/dwango/yashiro/pkg/config"
+)
+
+// Define errors
+var (
+	ErrValueIsEmpty = errors.New("value is empty")
+	ErrInvalidJSON  = errors.New("invalid json string")
 )
 
 // Values are stored values from external stores.

@@ -30,7 +30,30 @@ const DefaultConfigFilename = "./yashiro.yaml"
 
 // Config is Yashiro configuration.
 type Config struct {
-	Aws *AwsConfig `json:"aws,omitempty"`
+	Global GlobalConfig `json:"global,omitempty"`
+	Aws    *AwsConfig   `json:"aws,omitempty"`
+}
+
+type GlobalConfig struct {
+	EnableCache bool        `json:"enable_cache"`
+	Cache       CacheConfig `json:"cache,omitempty"`
+}
+
+type CacheType string
+
+const (
+	CacheTypeUnspecified CacheType = ""
+	CacheTypeMemory      CacheType = "memory" // default
+	CacheTypeFile        CacheType = "file"
+)
+
+type CacheConfig struct {
+	Type CacheType       `json:"type,omitempty"`
+	File FileCacheConfig `json:"file,omitempty"`
+}
+
+type FileCacheConfig struct {
+	CachePath string `json:"cache_path,omitempty"`
 }
 
 // AwsConfig is AWS service configuration.
@@ -54,28 +77,27 @@ type AwsParameterStoreValueConfig struct {
 	Decryption *bool `json:"decryption,omitempty"`
 }
 
-// NewFromFile returns a new Config according to a file. The configuration file is assumed to
+// LoadFromFile sets Config values according to a file. The configuration file is assumed to
 // be in YAML format.
-func NewFromFile(ctx context.Context, filename string) (*Config, error) {
+func (c *Config) LoadFromFile(ctx context.Context, filename string) error {
 	b, err := getConfigFile(filename)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	cfg := &Config{}
-	if err := yaml.Unmarshal(b, cfg); err != nil {
-		return nil, err
+	if err := yaml.Unmarshal(b, &c); err != nil {
+		return err
 	}
 
-	if cfg.Aws != nil {
+	if c.Aws != nil {
 		awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		cfg.Aws.SdkConfig = &awsCfg
+		c.Aws.SdkConfig = &awsCfg
 	}
 
-	return cfg, nil
+	return nil
 }
 
 // Value is interface of external store value.

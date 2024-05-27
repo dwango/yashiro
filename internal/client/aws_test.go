@@ -25,6 +25,7 @@ import (
 	kmsTypes "github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	ssmTypes "github.com/aws/aws-sdk-go-v2/service/ssm/types"
+	"github.com/dwango/yashiro/internal/values"
 	"github.com/dwango/yashiro/pkg/config"
 )
 
@@ -109,7 +110,7 @@ func Test_awsClient_GetValues(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    Values
+		want    values.Values
 		wantErr bool
 	}{
 		{
@@ -128,7 +129,7 @@ func Test_awsClient_GetValues(t *testing.T) {
 				ctx:            context.Background(),
 				ignoreNotFound: false,
 			},
-			want: Values{"ssmKey": "test", "kmsKey": "test"},
+			want: values.Values{"ssmKey": "test", "kmsKey": "test"},
 		},
 		{
 			name: "ok: json",
@@ -156,7 +157,7 @@ func Test_awsClient_GetValues(t *testing.T) {
 				ctx:            context.Background(),
 				ignoreNotFound: false,
 			},
-			want: Values{"ssmKey": map[string]any{"key": "value"}, "kmsKey": map[string]any{"key": "value"}},
+			want: values.Values{"ssmKey": map[string]any{"key": "value"}, "kmsKey": map[string]any{"key": "value"}},
 		},
 		{
 			name: "ok: ignore not found error",
@@ -174,7 +175,7 @@ func Test_awsClient_GetValues(t *testing.T) {
 				ctx:            context.Background(),
 				ignoreNotFound: true,
 			},
-			want: Values{},
+			want: values.Values{},
 		},
 		{
 			name: "error: return not found from ssm",

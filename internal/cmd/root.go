@@ -20,7 +20,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dwango/yashiro/pkg/config"
 	"github.com/spf13/cobra"
+)
+
+var (
+	configFile   string
+	globalConfig = &config.Config{}
 )
 
 // New returns a new cobra.Command.
@@ -31,6 +37,9 @@ func New() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+
+	f := cmd.PersistentFlags()
+	f.StringVarP(&configFile, "config", "c", config.DefaultConfigFilename, "specify config file.")
 
 	cmd.AddCommand(newTemplateCommand())
 	cmd.AddCommand(newVersionCommand())
@@ -47,5 +56,16 @@ func checkArgsLength(argsReceived int, requiredArgs ...string) error {
 		}
 		return fmt.Errorf("this command needs %v %s: %s", expectedNum, arg, strings.Join(requiredArgs, ", "))
 	}
+	return nil
+}
+
+// preLoadConfig is PreRunE function for cobra.Command. This function preloads config file.
+func preLoadConfig(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
+
+	if err := globalConfig.LoadFromFile(ctx, configFile); err != nil {
+		return err
+	}
+
 	return nil
 }

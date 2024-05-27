@@ -51,7 +51,7 @@ func New(cfg *config.Config, option ...Option) (Engine, error) {
 	}
 
 	var encAndDec encoding.EncodeAndDecoder
-	if opts.TextType == TextTypePlane {
+	if opts.TextType == TextTypePlain {
 		encAndDec = &noOpEncodeAndDecoder{}
 	} else {
 		encAndDec, err = encoding.NewEncodeAndDecoder(opts.TextType)
