@@ -24,10 +24,10 @@ import (
 // Engine initializes external store client and template.
 type Engine = engine.Engine
 
-var (
-	// NewConfigFromFile returns a new Config from file.
-	NewConfigFromFile = config.NewFromFile
+// Config is the configuration for this library.
+type Config = config.Config
 
+var (
 	// NewEngine returns a new Engine.
 	NewEngine = engine.New
 )

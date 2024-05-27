@@ -1,11 +1,11 @@
 /**
- * Copyright 2023 DWANGO Co., Ltd.
+ * Copyright 2024 DWANGO Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *     https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,51 +13,48 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package client
 
 import (
 	"context"
-	"errors"
 
 	"github.com/dwango/yashiro/internal/client/cache"
 	"github.com/dwango/yashiro/internal/values"
-	"github.com/dwango/yashiro/pkg/config"
 )
 
-// Define errors
-var (
-	ErrNotfoundValueConfig = errors.New("not found value config")
-)
-
-// Client is the external stores client.
-type Client interface {
-	GetValues(ctx context.Context, ignoreNotFound bool) (values.Values, error)
+type clientWithCache struct {
+	client Client
+	cache  cache.Cache
 }
 
-// New returns a new Client.
-func New(cfg *config.Config) (Client, error) {
-	var client Client
-	var err error
-
-	if cfg.Aws != nil {
-		client, err = newAwsClient(cfg.Aws)
+func newClientWithCache(client Client, cache cache.Cache) Client {
+	return &clientWithCache{
+		client: client,
+		cache:  cache,
 	}
+}
+
+// GetValues implements Client.
+func (c *clientWithCache) GetValues(ctx context.Context, ignoreNotFound bool) (values.Values, error) {
+	val, expired, err := c.cache.Load(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if cfg.Global.EnableCache {
-		cache, err := cache.New(cfg.Global.Cache)
+	// if cache is empty, get values from external store.
+	if len(val) == 0 || expired {
+		val, err = c.client.GetValues(ctx, ignoreNotFound)
 		if err != nil {
 			return nil, err
 		}
-		client = newClientWithCache(client, cache)
 	}
 
-	if client == nil {
-		return nil, ErrNotfoundValueConfig
+	// save values to cache
+	if expired {
+		if err := c.cache.Save(ctx, val); err != nil {
+			return nil, err
+		}
 	}
 
-	return client, nil
+	return val, nil
 }

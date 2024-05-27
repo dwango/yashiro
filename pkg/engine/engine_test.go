@@ -24,6 +24,7 @@ import (
 	"text/template"
 
 	"github.com/dwango/yashiro/internal/client"
+	"github.com/dwango/yashiro/internal/values"
 	"github.com/dwango/yashiro/pkg/config"
 	"github.com/dwango/yashiro/pkg/engine/encoding"
 )
@@ -55,9 +56,9 @@ func TestNew(t *testing.T) {
 	}
 }
 
-type mockClient func(ctx context.Context, ignoreNotFound bool) (client.Values, error)
+type mockClient func(ctx context.Context, ignoreNotFound bool) (values.Values, error)
 
-func (m mockClient) GetValues(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
+func (m mockClient) GetValues(ctx context.Context, ignoreNotFound bool) (values.Values, error) {
 	return m(ctx, ignoreNotFound)
 }
 
@@ -88,7 +89,7 @@ func Test_engine_Render(t *testing.T) {
 		{
 			name: "ok: render",
 			fields: fields{
-				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
+				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (values.Values, error) {
 					return map[string]any{"key": "value"}, nil
 				}),
 				encodeAndDecoder: &noOpEncodeAndDecoder{},
@@ -104,7 +105,7 @@ func Test_engine_Render(t *testing.T) {
 		{
 			name: "ok: deep render",
 			fields: fields{
-				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
+				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (values.Values, error) {
 					return map[string]any{"Values": map[string]any{"key": "value"}}, nil
 				}),
 				encodeAndDecoder: &noOpEncodeAndDecoder{},
@@ -120,7 +121,7 @@ func Test_engine_Render(t *testing.T) {
 		{
 			name: "ok: render with function",
 			fields: fields{
-				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
+				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (values.Values, error) {
 					return map[string]any{"key": "value"}, nil
 				}),
 				encodeAndDecoder: &noOpEncodeAndDecoder{},
@@ -136,7 +137,7 @@ func Test_engine_Render(t *testing.T) {
 		{
 			name: "ok: encode and decode as yaml-docs after rendering",
 			fields: fields{
-				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
+				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (values.Values, error) {
 					return map[string]any{"key": "value"}, nil
 				}),
 				encodeAndDecoder: createEncodeAndDecoder(encoding.TextTypeYAMLDocs),
@@ -152,8 +153,8 @@ func Test_engine_Render(t *testing.T) {
 		{
 			name: "error: failed to get values",
 			fields: fields{
-				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
-					return nil, client.ErrValueIsEmpty
+				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (values.Values, error) {
+					return nil, values.ErrValueIsEmpty
 				}),
 				encodeAndDecoder: &noOpEncodeAndDecoder{},
 				template:         template.New("test"),
@@ -168,7 +169,7 @@ func Test_engine_Render(t *testing.T) {
 		{
 			name: "error: failed to parse template",
 			fields: fields{
-				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
+				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (values.Values, error) {
 					return map[string]any{"key": "value"}, nil
 				}),
 				encodeAndDecoder: &noOpEncodeAndDecoder{},
@@ -184,7 +185,7 @@ func Test_engine_Render(t *testing.T) {
 		{
 			name: "error: failed to execute template",
 			fields: fields{
-				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
+				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (values.Values, error) {
 					return map[string]any{"key": "value"}, nil
 				}),
 				encodeAndDecoder: &noOpEncodeAndDecoder{},
@@ -200,7 +201,7 @@ func Test_engine_Render(t *testing.T) {
 		{
 			name: "error: failed to encode and decode",
 			fields: fields{
-				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (client.Values, error) {
+				client: mockClient(func(ctx context.Context, ignoreNotFound bool) (values.Values, error) {
 					return map[string]any{"key": "value"}, nil
 				}),
 				encodeAndDecoder: createEncodeAndDecoder(encoding.TextTypeJSON),

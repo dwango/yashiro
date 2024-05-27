@@ -38,7 +38,7 @@ const example = `  # specify single file.
 `
 
 var textTypeValues = []string{
-	string(engine.TextTypePlane),
+	string(engine.TextTypePlain),
 	string(engine.TextTypeJSON),
 	string(engine.TextTypeJSONArray),
 	string(engine.TextTypeYAML),
@@ -47,7 +47,6 @@ var textTypeValues = []string{
 }
 
 func newTemplateCommand() *cobra.Command {
-	var configFile string
 	var ignoreNotFound bool
 	var textType string
 
@@ -58,15 +57,12 @@ func newTemplateCommand() *cobra.Command {
 		Args: func(_ *cobra.Command, args []string) error {
 			return checkArgsLength(len(args), "template file")
 		},
+		PreRunE: preLoadConfig,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
-			cfg, err := config.NewFromFile(ctx, configFile)
-			if err != nil {
-				return err
-			}
-
-			eng, err := engine.New(cfg,
+			globalConfig.Global.Cache.Type = config.CacheTypeFile
+			eng, err := engine.New(globalConfig,
 				engine.IgnoreNotFound(ignoreNotFound), engine.TextType(engine.TextTypeOpt(textType)),
 			)
 			if err != nil {
@@ -83,9 +79,10 @@ func newTemplateCommand() *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringVarP(&configFile, "config", "c", config.DefaultConfigFilename, "specify config file.")
-	f.StringVar(&textType, "text-type", string(engine.TextTypePlane),
-		fmt.Sprintf("specify text type after rendering. available values: %s", strings.Join(textTypeValues, ", ")),
+	f.StringVar(&globalConfig.Global.Cache.File.CachePath, "cache-dir", "", "specify the directory to save the cache files.")
+	f.BoolVar(&globalConfig.Global.EnableCache, "enable-cache", false, "enable the file base cache.")
+	f.StringVar(&textType, "text-type", string(engine.TextTypePlain),
+		fmt.Sprintf("specify the text type after rendering. available values: %s", strings.Join(textTypeValues, ", ")),
 	)
 	f.BoolVar(&ignoreNotFound, "ignore-not-found", false, "ignore values are not found in the external store.")
 

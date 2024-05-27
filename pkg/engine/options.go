@@ -24,7 +24,7 @@ type Option func(*opts)
 type TextTypeOpt = encoding.TextType
 
 const (
-	TextTypePlane     TextTypeOpt = "plane"
+	TextTypePlain     TextTypeOpt = "plain"
 	TextTypeJSON      TextTypeOpt = encoding.TextTypeJSON
 	TextTypeJSONArray TextTypeOpt = encoding.TextTypeJSONArray
 	TextTypeYAML      TextTypeOpt = encoding.TextTypeYAML
@@ -53,5 +53,5 @@ type opts struct {
 
 var defaultOpts = &opts{
 	IgnoreNotFound: false,
-	TextType:       TextTypePlane,
+	TextType:       TextTypePlain,
 }

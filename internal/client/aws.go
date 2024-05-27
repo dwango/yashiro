@@ -25,6 +25,7 @@ import (
 	kmsTypes "github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	ssmTypes "github.com/aws/aws-sdk-go-v2/service/ssm/types"
+	"github.com/dwango/yashiro/internal/values"
 	"github.com/dwango/yashiro/pkg/config"
 )
 
@@ -56,8 +57,8 @@ func newAwsClient(cfg *config.AwsConfig) (Client, error) {
 	}, nil
 }
 
-func (c awsClient) GetValues(ctx context.Context, ignoreNotFound bool) (Values, error) {
-	values := make(Values, len(c.parameterStoreValue)+len(c.secretsManagerValue))
+func (c awsClient) GetValues(ctx context.Context, ignoreNotFound bool) (values.Values, error) {
+	values := make(values.Values, len(c.parameterStoreValue)+len(c.secretsManagerValue))
 
 	for _, v := range c.parameterStoreValue {
 		output, err := c.ssmClient.GetParameter(ctx, &ssm.GetParameterInput{
