@@ -20,6 +20,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"time"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/dwango/yashiro"
@@ -36,6 +37,13 @@ func Example() {
 
 	refName := "example"
 	cfg := &config.Config{
+		Global: config.GlobalConfig{
+			EnableCache: true, // enable cache
+			Cache: config.CacheConfig{
+				Type:           config.CacheTypeMemory,
+				ExpireDuration: config.Duration(30 * time.Minute),
+			},
+		},
 		Aws: &config.AwsConfig{
 			ParameterStoreValues: []config.AwsParameterStoreValueConfig{
 				{
@@ -50,7 +58,7 @@ func Example() {
 		},
 	}
 
-	eng, err := yashiro.NewEngine(cfg)
+	eng, err := yashiro.NewEngine(cfg, yashiro.IgnoreNotFound(true)) // ignore not found value
 	if err != nil {
 		log.Fatalf("failed to create engine: %s", err)
 	}

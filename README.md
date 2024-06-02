@@ -17,6 +17,26 @@ See [Godoc](https://pkg.go.dev/github.com/dwango/yashiro).
 go get github.com/dwango/yashiro
 ```
 
+### Authorization
+
+AWS
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ssm:GetParameter",
+                "secretsmanager:GetSecretValue"
+            ],
+            "Resource": ["*"],
+        },
+    ]
+}
+```
+
 ## CLI Tool
 
 ### Installation
