@@ -95,16 +95,16 @@ func (f *fileCache) Load(_ context.Context, key string, decrypt bool) (*string, 
 	// check if cache is expired
 	expired := time.Since(fInfo.ModTime().Local()) > f.expireDuration
 
-	cacheByte, err := f.readFile(filename, false)
+	valueByte, err := f.readFile(filename, false)
 	if err != nil {
 		return nil, false, err
 	}
 	if !decrypt {
-		cache := string(cacheByte)
-		return &cache, expired, nil
+		value := string(valueByte)
+		return &value, expired, nil
 	}
 
-	valueByte, err := f.decryptCache(cacheByte)
+	valueByte, err = f.decryptCache(valueByte)
 	if err != nil {
 		return nil, false, err
 	}
@@ -226,7 +226,13 @@ func (f fileCache) readFile(filename string, hidden bool) ([]byte, error) {
 		filename = "." + filename
 	}
 
-	return os.ReadFile(filepath.Join(f.cachePath, filename))
+	data, err := os.ReadFile(filepath.Join(f.cachePath, filename))
+	if err != nil {
+		return nil, err
+	}
+	data = data[:len(data)-1]
+
+	return data, nil
 }
 
 func (f fileCache) writeToFile(filename string, data []byte, hidden bool) error {
@@ -241,6 +247,7 @@ func (f fileCache) writeToFile(filename string, data []byte, hidden bool) error 
 	}
 	defer file.Close()
 
+	data = append(data, '\n')
 	if _, err := file.Write(data); err != nil {
 		return err
 	}

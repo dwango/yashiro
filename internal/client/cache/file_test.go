@@ -174,7 +174,7 @@ func Test_fileCache_SaveAndLoad(t *testing.T) {
 				t.Errorf("fileCache.Load() expired = %v, want %v", gotExpired, tt.wantExpired)
 			}
 			if !reflect.DeepEqual(gotValue, tt.args.value) {
-				t.Errorf("fileCache.Load() got = %v, want %v", gotValue, tt.args.value)
+				t.Errorf("fileCache.Load() got = %v, want %v", *gotValue, *tt.args.value)
 			}
 		})
 	}
