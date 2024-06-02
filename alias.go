@@ -30,4 +30,7 @@ type Config = config.Config
 var (
 	// NewEngine returns a new Engine.
 	NewEngine = engine.New
+
+	// IgnoreNotFound is an option to ignore missing external store values.
+	IgnoreNotFound = engine.IgnoreNotFound
 )

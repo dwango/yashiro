@@ -13,38 +13,66 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package cache
 
 import (
 	"context"
-	"maps"
-
-	"github.com/dwango/yashiro/internal/values"
+	"strings"
+	"time"
 )
 
 type memoryCache struct {
-	values values.Values
+	caches         map[string]*cacheData
+	expireDuration time.Duration
+	keyPrefix      string
 }
 
-func newMemoryCache() (Cache, error) {
-	return &memoryCache{}, nil
+func newMemoryCache(expireDuration time.Duration, options ...Option) (Cache, error) {
+	opts := defaultOpts
+	for _, o := range options {
+		o(opts)
+	}
+
+	keyPrefix := keyToHex(strings.Join(opts.CacheKeys, "_")) + "_"
+
+	return &memoryCache{
+		caches:         make(map[string]*cacheData),
+		expireDuration: expireDuration,
+		keyPrefix:      keyPrefix,
+	}, nil
+}
+
+type cacheData struct {
+	value    string
+	saveTime time.Time
 }
 
 // Load implements Cache.
-func (m memoryCache) Load(_ context.Context) (values.Values, bool, error) {
-	expired := false
-	if len(m.values) == 0 {
-		expired = true
+func (m memoryCache) Load(_ context.Context, key string, _ bool) (*string, bool, error) {
+	data, ok := m.caches[m.keyPrefix+key]
+	if !ok {
+		return nil, false, nil
 	}
 
-	return m.values, expired, nil
+	if time.Since(data.saveTime) > m.expireDuration {
+		return &data.value, true, nil
+	}
+
+	return &data.value, false, nil
 }
 
 // Save implements Cache.
-func (m *memoryCache) Save(_ context.Context, val values.Values) error {
-	newVal := make(values.Values, len(val))
-	maps.Copy(newVal, val)
-	m.values = newVal
+func (m *memoryCache) Save(_ context.Context, key string, value *string, _ bool) error {
+	if value == nil {
+		return nil
+	}
+
+	data := &cacheData{
+		value:    *value,
+		saveTime: time.Now(),
+	}
+	m.caches[m.keyPrefix+key] = data
 
 	return nil
 }

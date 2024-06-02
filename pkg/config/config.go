@@ -20,6 +20,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -48,9 +49,12 @@ const (
 )
 
 type CacheConfig struct {
-	Type CacheType       `json:"type,omitempty"`
-	File FileCacheConfig `json:"file,omitempty"`
+	Type           CacheType       `json:"type"`
+	ExpireDuration Duration        `json:"expire_duration,omitempty"`
+	File           FileCacheConfig `json:"file,omitempty"`
 }
+
+const DefaultExpireDuration time.Duration = 30 * 24 * time.Hour // 30 days
 
 type FileCacheConfig struct {
 	CachePath string `json:"cache_path,omitempty"`
