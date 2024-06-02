@@ -90,7 +90,7 @@ func (f *fileCache) Load(_ context.Context, key string, decrypt bool) (*string, 
 	fInfo, err := f.getFileInfo(filename, false)
 	if err != nil {
 		// cache file not found
-		return nil, true, nil
+		return nil, false, nil
 	}
 	// check if cache is expired
 	expired := time.Since(fInfo.ModTime().Local()) > f.expireDuration

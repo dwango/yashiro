@@ -52,7 +52,7 @@ type cacheData struct {
 func (m memoryCache) Load(_ context.Context, key string, _ bool) (*string, bool, error) {
 	data, ok := m.caches[m.keyPrefix+key]
 	if !ok {
-		return nil, true, nil
+		return nil, false, nil
 	}
 
 	if time.Since(data.saveTime) > m.expireDuration {
