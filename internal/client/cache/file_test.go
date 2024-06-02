@@ -96,7 +96,6 @@ func Test_fileCache_SaveAndLoad(t *testing.T) {
 		name        string
 		fields      fields
 		args        args
-		sleep       time.Duration
 		wantExpired bool
 		wantErr     bool
 	}{
@@ -130,13 +129,12 @@ func Test_fileCache_SaveAndLoad(t *testing.T) {
 			fields: fields{
 				cachePath:      cachePath,
 				cipherBlock:    block,
-				expireDuration: 1 * time.Microsecond,
+				expireDuration: 0,
 			},
 			args: args{
 				key:   "expired-key",
 				value: stringPtr("expired-value"),
 			},
-			sleep:       10 * time.Millisecond,
 			wantExpired: true,
 		},
 		{
@@ -165,7 +163,6 @@ func Test_fileCache_SaveAndLoad(t *testing.T) {
 			if err := f.Save(tt.args.in0, tt.args.key, tt.args.value, tt.args.encrypt); (err != nil) != tt.wantErr {
 				t.Errorf("fileCache.Save() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			time.Sleep(tt.sleep)
 
 			// Load
 			gotValue, gotExpired, err := f.Load(tt.args.in0, tt.args.key, tt.args.encrypt)
