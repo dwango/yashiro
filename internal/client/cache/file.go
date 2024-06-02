@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package cache
 
 import (
@@ -20,41 +21,51 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"encoding/json"
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
-	"github.com/dwango/yashiro/internal/values"
 	"github.com/dwango/yashiro/pkg/config"
 	"golang.org/x/crypto/bcrypt"
 )
 
 const (
-	cacheFileName   = "values"
 	keyFileName     = "key"
-	keyHashFileName = ".key_hash"
+	keyHashFileName = "keyHash"
 )
 
 var defaultCacheBasePath string
 
 type fileCache struct {
-	cacheBasePath string
-	cipherBlock   cipher.Block
-	expired       bool
+	cachePath      string
+	cipherBlock    cipher.Block
+	expireDuration time.Duration
+	filenamePrefix string
 }
 
-func newFileCache(cfg config.FileCacheConfig) (Cache, error) {
-	fc := &fileCache{
-		cacheBasePath: defaultCacheBasePath,
+func newFileCache(cfg config.FileCacheConfig, expireDuration time.Duration, options ...Option) (Cache, error) {
+	opts := defaultOpts
+	for _, o := range options {
+		o(opts)
 	}
 
+	cachePath := defaultCacheBasePath
 	if len(cfg.CachePath) != 0 {
-		fc.cacheBasePath = cfg.CachePath
+		cachePath = cfg.CachePath
 	}
+	filenamePrefix := keyToHex(strings.Join(opts.CacheKeys, "_")) + "_"
+
+	fc := &fileCache{
+		cachePath:      cachePath,
+		expireDuration: expireDuration,
+		filenamePrefix: filenamePrefix,
+	}
+
 	// create cache directory
-	if err := os.MkdirAll(fc.cacheBasePath, 0777); err != nil {
+	if err := os.MkdirAll(fc.cachePath, 0777); err != nil {
 		return nil, err
 	}
 
@@ -72,46 +83,54 @@ func newFileCache(cfg config.FileCacheConfig) (Cache, error) {
 	return fc, nil
 }
 
-const (
-	// 30 days
-	expiredDuration time.Duration = 30 * 24 * time.Hour
-)
-
 // Load implements Cache.
-func (f *fileCache) Load(_ context.Context) (values.Values, bool, error) {
-	fInfo, err := f.getFileStat(cacheFileName)
+func (f *fileCache) Load(_ context.Context, key string, decrypt bool) (*string, bool, error) {
+	filename := keyToHex(key)
+
+	fInfo, err := f.getFileInfo(filename, false)
 	if err != nil {
-		f.expired = true
-		return nil, f.expired, nil
+		// cache file not found
+		return nil, true, nil
 	}
 	// check if cache is expired
-	f.expired = time.Since(fInfo.ModTime().Local()) > expiredDuration
+	expired := time.Since(fInfo.ModTime().Local()) > f.expireDuration
 
-	cacheCipherText, err := f.readFile(cacheFileName)
+	cacheByte, err := f.readFile(filename, false)
 	if err != nil {
 		return nil, false, err
 	}
+	if !decrypt {
+		cache := string(cacheByte)
+		return &cache, expired, nil
+	}
 
-	val, err := f.decryptCache(cacheCipherText)
+	valueByte, err := f.decryptCache(cacheByte)
 	if err != nil {
 		return nil, false, err
 	}
+	value := string(valueByte)
 
-	return val, f.expired, nil
+	return &value, expired, nil
 }
 
 // Save implements Cache.
-func (f *fileCache) Save(_ context.Context, val values.Values) error {
-	if !f.expired {
+func (f *fileCache) Save(_ context.Context, key string, value *string, encrypt bool) error {
+	if value == nil {
 		return nil
 	}
 
-	encryptedCache, err := f.encryptCache(val)
-	if err != nil {
-		return err
+	filename := keyToHex(key)
+	valueByte := []byte(*value)
+
+	if encrypt {
+		var err error
+		valueByte, err = f.encryptCache(valueByte)
+		if err != nil {
+			return err
+		}
 	}
 
-	if err := f.writeToFile(cacheFileName, encryptedCache); err != nil {
+	if err := f.writeToFile(filename, valueByte, false); err != nil {
 		return err
 	}
 
@@ -121,14 +140,14 @@ func (f *fileCache) Save(_ context.Context, val values.Values) error {
 func (f *fileCache) readOrCreateKey() ([]byte, error) {
 	var key []byte
 	// check key file exists
-	if _, err := f.getFileStat(keyFileName); err != nil {
+	if _, err := f.getFileInfo(keyFileName, false); err != nil {
 		key = make([]byte, 32)
 
 		// create key file
 		if _, err := rand.Read(key); err != nil {
 			return nil, err
 		}
-		if err := f.writeToFile(keyFileName, key); err != nil {
+		if err := f.writeToFile(keyFileName, key, false); err != nil {
 			return nil, err
 		}
 
@@ -137,7 +156,7 @@ func (f *fileCache) readOrCreateKey() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err := f.writeToFile(keyHashFileName, keyHash); err != nil {
+		if err := f.writeToFile(keyHashFileName, keyHash, true); err != nil {
 			return nil, err
 		}
 
@@ -146,13 +165,13 @@ func (f *fileCache) readOrCreateKey() ([]byte, error) {
 
 	var err error
 	// read key file
-	key, err = f.readFile(keyFileName)
+	key, err = f.readFile(keyFileName, false)
 	if err != nil {
 		return nil, err
 	}
 
 	// read key hash file
-	keyHash, err := f.readFile(keyHashFileName)
+	keyHash, err := f.readFile(keyHashFileName, true)
 	if err != nil {
 		return nil, err
 	}
@@ -165,54 +184,58 @@ func (f *fileCache) readOrCreateKey() ([]byte, error) {
 	return key, nil
 }
 
-func (f *fileCache) decryptCache(cacheCipherText []byte) (values.Values, error) {
-	if len(cacheCipherText) < aes.BlockSize {
+func (f *fileCache) decryptCache(cipherText []byte) ([]byte, error) {
+	if len(cipherText) < aes.BlockSize {
 		return nil, errors.New("ciphertext too short")
 	}
 
-	iv := cacheCipherText[:aes.BlockSize]
-	cacheCipherText = cacheCipherText[aes.BlockSize:]
+	iv := cipherText[:aes.BlockSize]
+	cipherText = cipherText[aes.BlockSize:]
 
-	cachePlainText := make([]byte, len(cacheCipherText))
-	stream := cipher.NewOFB(f.cipherBlock, iv)
-	stream.XORKeyStream(cachePlainText, cacheCipherText)
+	stream := cipher.NewCFBDecrypter(f.cipherBlock, iv)
+	stream.XORKeyStream(cipherText, cipherText)
 
-	values := make(values.Values)
-	if err := json.Unmarshal(cachePlainText, &values); err != nil {
-		return nil, err
-	}
-
-	return values, nil
+	return cipherText, nil
 }
 
-func (f *fileCache) encryptCache(values values.Values) ([]byte, error) {
-	cacheJSON, err := json.Marshal(values)
-	if err != nil {
-		return nil, err
-	}
-
-	cacheCipherText := make([]byte, aes.BlockSize+len(cacheJSON))
-	iv := cacheCipherText[:aes.BlockSize]
+func (f *fileCache) encryptCache(plainText []byte) ([]byte, error) {
+	cipherText := make([]byte, aes.BlockSize+len(plainText))
+	iv := cipherText[:aes.BlockSize]
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
 		return nil, err
 	}
 
-	stream := cipher.NewOFB(f.cipherBlock, iv)
-	stream.XORKeyStream(cacheCipherText[aes.BlockSize:], cacheJSON)
+	stream := cipher.NewCFBEncrypter(f.cipherBlock, iv)
+	stream.XORKeyStream(cipherText[aes.BlockSize:], plainText)
 
-	return cacheCipherText, nil
+	return cipherText, nil
 }
 
-func (f fileCache) getFileStat(filename string) (os.FileInfo, error) {
-	return os.Stat(f.cacheBasePath + "/" + filename)
+func (f fileCache) getFileInfo(filename string, hidden bool) (os.FileInfo, error) {
+	filename = f.filenamePrefix + filename
+	if hidden {
+		filename = "." + filename
+	}
+
+	return os.Stat((filepath.Join(f.cachePath, filename)))
 }
 
-func (f fileCache) readFile(filename string) ([]byte, error) {
-	return os.ReadFile(f.cacheBasePath + "/" + filename)
+func (f fileCache) readFile(filename string, hidden bool) ([]byte, error) {
+	filename = f.filenamePrefix + filename
+	if hidden {
+		filename = "." + filename
+	}
+
+	return os.ReadFile(filepath.Join(f.cachePath, filename))
 }
 
-func (f fileCache) writeToFile(filename string, data []byte) error {
-	file, err := os.Create(f.cacheBasePath + "/" + filename)
+func (f fileCache) writeToFile(filename string, data []byte, hidden bool) error {
+	filename = f.filenamePrefix + filename
+	if hidden {
+		filename = "." + filename
+	}
+
+	file, err := os.Create(filepath.Join(f.cachePath, filename))
 	if err != nil {
 		return err
 	}
@@ -226,12 +249,13 @@ func (f fileCache) writeToFile(filename string, data []byte) error {
 }
 
 func init() {
-	const cachePath = "/yashiro"
+	const cachePath = "yashiro"
 
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
-		defaultCacheBasePath = "/tmp" + cachePath + "/cache"
+		defaultCacheBasePath = filepath.Join(os.TempDir(), cachePath, "cache")
 		return
 	}
-	defaultCacheBasePath = cacheDir + cachePath
+
+	defaultCacheBasePath = filepath.Join(cacheDir, cachePath)
 }

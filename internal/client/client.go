@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dwango/yashiro/internal/client/cache"
 	"github.com/dwango/yashiro/internal/values"
 	"github.com/dwango/yashiro/pkg/config"
 )
@@ -41,18 +40,10 @@ func New(cfg *config.Config) (Client, error) {
 	var err error
 
 	if cfg.Aws != nil {
-		client, err = newAwsClient(cfg.Aws)
+		client, err = newAwsClient(cfg)
 	}
 	if err != nil {
 		return nil, err
-	}
-
-	if cfg.Global.EnableCache {
-		cache, err := cache.New(cfg.Global.Cache)
-		if err != nil {
-			return nil, err
-		}
-		client = newClientWithCache(client, cache)
 	}
 
 	if client == nil {

@@ -13,14 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package cache
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"time"
 
-	"github.com/dwango/yashiro/internal/values"
 	"github.com/dwango/yashiro/pkg/config"
 )
 
@@ -29,21 +31,30 @@ var (
 )
 
 type Cache interface {
-	// Load returns values from cache and whether or not cache is expired. If cache is empty,
-	// returned values is empty and expired=true.
-	Load(ctx context.Context) (values.Values, bool, error)
+	// Load returns cached string by using the key, and whether or not cache is expired. If a cache is empty,
+	// returned a string is nil and expired is true.
+	Load(ctx context.Context, key string, decrypt bool) (*string, bool, error)
 
-	// Save saves values to cache.
-	Save(ctx context.Context, val values.Values) error
+	// Save saves value to cache. If encrypt is true, value is encrypted before saving.
+	Save(ctx context.Context, key string, value *string, encrypt bool) error
 }
 
-func New(cfg config.CacheConfig) (Cache, error) {
+func New(cfg config.CacheConfig, options ...Option) (Cache, error) {
+	expireDuration := config.DefaultExpireDuration
+	if cfg.ExpireDuration != 0 {
+		expireDuration = time.Duration(cfg.ExpireDuration)
+	}
+
 	switch cfg.Type {
 	case config.CacheTypeUnspecified, config.CacheTypeMemory:
-		return newMemoryCache()
+		return newMemoryCache(expireDuration)
 	case config.CacheTypeFile:
-		return newFileCache(cfg.File)
+		return newFileCache(cfg.File, expireDuration, options...)
 	default:
 		return nil, fmt.Errorf("%w: %s", ErrInvalidCacheType, cfg.Type)
 	}
+}
+
+func keyToHex(key string) string {
+	return hex.EncodeToString([]byte(key))
 }

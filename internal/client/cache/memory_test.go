@@ -13,19 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package cache
 
 import (
 	"context"
 	"reflect"
 	"testing"
-
-	"github.com/dwango/yashiro/internal/values"
+	"time"
 )
 
 func Test_newMemoryCache(t *testing.T) {
+	type args struct {
+		expireDuration time.Duration
+		options        []Option
+	}
 	tests := []struct {
 		name    string
+		args    args
 		want    Cache
 		wantErr bool
 	}{
@@ -33,7 +38,7 @@ func Test_newMemoryCache(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := newMemoryCache()
+			got, err := newMemoryCache(tt.args.expireDuration, tt.args.options...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("newMemoryCache() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -45,104 +50,84 @@ func Test_newMemoryCache(t *testing.T) {
 	}
 }
 
-func Test_memoryCache_Load(t *testing.T) {
+func Test_memoryCache_SaveAndLoad(t *testing.T) {
 	type fields struct {
-		values values.Values
+		caches         map[string]*cacheData
+		expireDuration time.Duration
+		keyPrefix      string
 	}
 	type args struct {
-		in0 context.Context
+		in0   context.Context
+		key   string
+		value *string
+		in3   bool
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    values.Values
-		want1   bool
-		wantErr bool
+		name        string
+		fields      fields
+		args        args
+		wantExpired bool
+		wantErr     bool
 	}{
 		{
-			name: "ok: get values",
+			name: "ok: save and load",
 			fields: fields{
-				values: values.Values{
-					"key": "value",
-				},
+				caches:         make(map[string]*cacheData),
+				expireDuration: notExpireDuration,
 			},
 			args: args{
-				in0: context.Background(),
-			},
-			want: values.Values{
-				"key": "value",
+				key:   "key",
+				value: stringPtr("value"),
 			},
 		},
 		{
-			name: "ok: no values(return expired=true)",
+			name: "ok: load expired value",
 			fields: fields{
-				values: nil,
+				caches:         make(map[string]*cacheData),
+				expireDuration: 0,
 			},
 			args: args{
-				in0: context.Background(),
+				key:   "expired-key",
+				value: stringPtr("expired-value"),
 			},
-			want:  nil,
-			want1: true,
+			wantExpired: true,
 		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			m := memoryCache{
-				values: tt.fields.values,
-			}
-			got, got1, err := m.Load(tt.args.in0)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("memoryCache.Load() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("memoryCache.Load() got = %v, want %v", got, tt.want)
-			}
-			if got1 != tt.want1 {
-				t.Errorf("memoryCache.Load() got1 = %v, want %v", got1, tt.want1)
-			}
-		})
-	}
-}
-
-func Test_memoryCache_Save(t *testing.T) {
-	type fields struct {
-		values values.Values
-	}
-	type args struct {
-		in0 context.Context
-		val values.Values
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
 		{
-			name: "ok: save values",
+			name: "ok: with key prefix",
 			fields: fields{
-				values: values.Values{},
+				caches:         make(map[string]*cacheData),
+				expireDuration: notExpireDuration,
+				keyPrefix:      "prefix_",
 			},
 			args: args{
-				in0: context.Background(),
-				val: values.Values{
-					"key": "value",
-				},
+				key:   "prefix-key",
+				value: stringPtr("prefix-value"),
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := &memoryCache{
-				values: tt.fields.values,
+				caches:         tt.fields.caches,
+				expireDuration: tt.fields.expireDuration,
+				keyPrefix:      tt.fields.keyPrefix,
 			}
-			if err := m.Save(tt.args.in0, tt.args.val); (err != nil) != tt.wantErr {
+			// Save
+			if err := m.Save(tt.args.in0, tt.args.key, tt.args.value, tt.args.in3); (err != nil) != tt.wantErr {
 				t.Errorf("memoryCache.Save() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if !reflect.DeepEqual(m.values, tt.args.val) {
-				t.Errorf("memoryCache.Save() got = %v, want %v", m.values, tt.args.val)
+
+			// Load
+			gotValue, gotExpired, err := m.Load(tt.args.in0, tt.args.key, tt.args.in3)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("memoryCache.Load() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if gotExpired != tt.wantExpired {
+				t.Errorf("memoryCache.Load() expired = %v, want %v", gotExpired, tt.wantExpired)
+			}
+			if !reflect.DeepEqual(gotValue, tt.args.value) {
+				t.Errorf("memoryCache.Load() got = %v, want %v", gotValue, tt.args.value)
 			}
 		})
 	}
