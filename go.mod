@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.50.4
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.10
 	github.com/spf13/cobra v1.8.0
-	golang.org/x/crypto v0.3.0
+	golang.org/x/crypto v0.23.0
 	sigs.k8s.io/yaml v1.4.0
 )
 
