@@ -85,7 +85,7 @@ func (c awsClient) GetValues(ctx context.Context, ignoreNotFound bool) (values.V
 			if ignoreNotFound && errors.As(err, &notFoundErr) {
 				continue
 			}
-			return nil, err
+			return nil, gettingValueError(v.Name, err)
 		}
 
 		if err := values.SetValue(v, output.Parameter.Value); err != nil {
@@ -103,7 +103,7 @@ func (c awsClient) GetValues(ctx context.Context, ignoreNotFound bool) (values.V
 			if ignoreNotFound && errors.As(err, &notFoundErr) {
 				continue
 			}
-			return nil, err
+			return nil, gettingValueError(v.Name, err)
 		}
 
 		if err := values.SetValue(v, output.SecretString); err != nil {

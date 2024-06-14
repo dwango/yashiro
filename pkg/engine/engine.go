@@ -19,12 +19,18 @@ package engine
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"text/template"
 
 	"github.com/dwango/yashiro/internal/client"
 	"github.com/dwango/yashiro/pkg/config"
 	"github.com/dwango/yashiro/pkg/engine/encoding"
+)
+
+var (
+	ErrRendering = errors.New("failed to render")
 )
 
 // Engine is a template engine.
@@ -81,12 +87,12 @@ func (e engine) Render(ctx context.Context, text string, dest io.Writer) error {
 
 func (e engine) render(text string, dest io.Writer, data any) error {
 	if _, err := e.template.Parse(text); err != nil {
-		return err
+		return fmt.Errorf("%w: %w", ErrRendering, err)
 	}
 
 	tmp := &bytes.Buffer{}
 	if err := e.template.Execute(tmp, data); err != nil {
-		return err
+		return fmt.Errorf("%w: %w", ErrRendering, err)
 	}
 
 	b, err := e.encodeAndDecoder.EncodeAndDecode(tmp.Bytes())
@@ -96,7 +102,7 @@ func (e engine) render(text string, dest io.Writer, data any) error {
 
 	_, err = io.Copy(dest, bytes.NewReader(b))
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", ErrRendering, err)
 	}
 
 	return nil
