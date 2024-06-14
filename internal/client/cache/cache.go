@@ -28,6 +28,7 @@ import (
 
 var (
 	ErrInvalidCacheType = errors.New("invalid cache type")
+	ErrCacheProcessing  = errors.New("cache processing error")
 )
 
 type Cache interface {
@@ -57,4 +58,12 @@ func New(cfg config.CacheConfig, options ...Option) (Cache, error) {
 
 func keyToHex(key string) string {
 	return hex.EncodeToString([]byte(key))
+}
+
+func cacheProcessingError(msg string, err error) error {
+	if err != nil {
+		return fmt.Errorf("%w: %s: %w", ErrCacheProcessing, msg, err)
+	}
+
+	return fmt.Errorf("%w: %s", ErrCacheProcessing, msg)
 }

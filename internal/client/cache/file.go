@@ -21,7 +21,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -66,7 +65,7 @@ func newFileCache(cfg config.FileCacheConfig, expireDuration time.Duration, opti
 
 	// create cache directory
 	if err := os.MkdirAll(fc.cachePath, 0777); err != nil {
-		return nil, err
+		return nil, cacheProcessingError("failed to create cache directory", err)
 	}
 
 	// read or create key
@@ -77,7 +76,7 @@ func newFileCache(cfg config.FileCacheConfig, expireDuration time.Duration, opti
 
 	fc.cipherBlock, err = aes.NewCipher(key)
 	if err != nil {
-		return nil, err
+		return nil, cacheProcessingError("failed to create cipher block", err)
 	}
 
 	return fc, nil
@@ -145,7 +144,7 @@ func (f *fileCache) readOrCreateKey() ([]byte, error) {
 
 		// create key file
 		if _, err := rand.Read(key); err != nil {
-			return nil, err
+			return nil, cacheProcessingError("failed to create key", err)
 		}
 		if err := f.writeToFile(keyFileName, key, false); err != nil {
 			return nil, err
@@ -178,7 +177,7 @@ func (f *fileCache) readOrCreateKey() ([]byte, error) {
 
 	// check key is not tampered
 	if err := bcrypt.CompareHashAndPassword(keyHash, key); err != nil {
-		return nil, err
+		return nil, cacheProcessingError("key is tampered", err)
 	}
 
 	return key, nil
@@ -186,7 +185,7 @@ func (f *fileCache) readOrCreateKey() ([]byte, error) {
 
 func (f *fileCache) decryptCache(cipherText []byte) ([]byte, error) {
 	if len(cipherText) < aes.BlockSize {
-		return nil, errors.New("ciphertext too short")
+		return nil, cacheProcessingError("cipher text is too short", nil)
 	}
 
 	iv := cipherText[:aes.BlockSize]
@@ -202,7 +201,7 @@ func (f *fileCache) encryptCache(plainText []byte) ([]byte, error) {
 	cipherText := make([]byte, aes.BlockSize+len(plainText))
 	iv := cipherText[:aes.BlockSize]
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		return nil, err
+		return nil, cacheProcessingError("failed to create initialization vector", err)
 	}
 
 	stream := cipher.NewCFBEncrypter(f.cipherBlock, iv)
@@ -228,7 +227,7 @@ func (f fileCache) readFile(filename string, hidden bool) ([]byte, error) {
 
 	data, err := os.ReadFile(filepath.Join(f.cachePath, filename))
 	if err != nil {
-		return nil, err
+		return nil, cacheProcessingError("failed to read file", err)
 	}
 	data = data[:len(data)-1]
 
@@ -243,7 +242,7 @@ func (f fileCache) writeToFile(filename string, data []byte, hidden bool) error 
 
 	file, err := os.Create(filepath.Join(f.cachePath, filename))
 	if err != nil {
-		return err
+		return cacheProcessingError("failed to create file", err)
 	}
 	defer file.Close()
 

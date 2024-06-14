@@ -19,6 +19,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/dwango/yashiro/internal/values"
 	"github.com/dwango/yashiro/pkg/config"
@@ -27,6 +28,7 @@ import (
 // Define errors
 var (
 	ErrNotfoundValueConfig = errors.New("not found value config")
+	ErrGettingValue        = errors.New("failed to get value")
 )
 
 // Client is the external stores client.
@@ -51,4 +53,8 @@ func New(cfg *config.Config) (Client, error) {
 	}
 
 	return client, nil
+}
+
+func gettingValueError(name string, err error) error {
+	return fmt.Errorf("%w: name='%s': %w", ErrGettingValue, name, err)
 }
